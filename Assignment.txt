@@ -1,0 +1,111 @@
+Create a web application using node.js with any(i.e MongoDb, Mysql) database to get
+
+student results, with the following
+
+Models
+
+Create students table with following columns
+
+ Id
+
+ Name
+
+ Age
+
+ Mark1
+
+ Mark2
+
+ Mark3
+
+APIs
+
+ 1.upload - Upload a CSV file and insert into students table
+
+ 2.students/:id/result - Get the result of the student by passing id
+
+3.students?resultStatus=passed/failed - get all the students passed/failed by
+
+passing the resultStatus querystring
+
+// Create students table with following columns
+
+const mongoose = require('mongoose');
+
+const StudentSchema = mongoose.Schema({
+    name: {
+        type: String,
+        required: true
+    },
+    age: {
+        type: Number,
+        required: true
+    },
+    mark1: {
+        type: Number,
+        required: true
+    },
+    mark2: {
+        type: Number,
+        required: true
+    },
+    mark3: {
+        type: Number,
+        required: true
+    }
+});
+
+const Student = mongoose.model('Student', StudentSchema);
+
+// APIs
+
+// 1.upload - Upload a CSV file and insert into students table
+
+router.post('/upload', async (req, res) => {
+    try {
+        const csv = require('csvtojson');
+        const csvFilePath = req.body.file;
+        const jsonArray = await csv().fromFile(csvFilePath);
+        await Student.insertMany(jsonArray);
+        res.json({
+            message: 'Data uploaded successfully'
+        });
+    } catch (err) {
+        console.log(err);
+    }
+});
+
+// 2.students/:id/result - Get the result of the student by passing id
+
+router.get('/students/:id/result', async (req, res) => {
+    const studentId = req.params.id;
+    try {
+        const student = await Student.findById(studentId);
+        const totalMarks = student.mark1 + student.mark2 + student.mark3;
+        const result = (totalMarks / 3 >= 50) ? 'passed' : 'failed';
+        res.json({
+            result
+        });
+    } catch (err) {
+        console.log(err);
+    }
+});
+
+// 3.students?resultStatus=passed/failed - get all the students passed/failed by
+
+// passing the resultStatus querystring
+
+router.get('/students', async (req, res) => {
+    const resultStatus = req.query.resultStatus;
+    try {
+        const students = await Student.find({});
+        const studentsResult = students.filter(student => {
+            const totalMarks = student.mark1 + student.mark2 + student.mark3;
+            const result = (totalMarks / 3 >= 50) ? 'passed' : 'failed';
+            return result === resultStatus;
+        });
+        res.json(studentsResult);
+    } catch (err) {
+        console.log(err);
+    }
+});
